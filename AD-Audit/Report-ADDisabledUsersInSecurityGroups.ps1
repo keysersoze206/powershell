@@ -65,14 +65,32 @@ Catch {
     Break
 }
 
+Write-Host -ForegroundColor Gray "Checking if Disabled Users are in Security Groups..."
+
+$DisabledUsersInSecurityGroups = 0
+
 $Data = Foreach ( $User in $Users ) {
     $Groups = Get-ADPrincipalGroupMembership -Identity $User | `
-        Where-Object Name -ne 'Domain Users'
-
-    $Groups = $Groups.Name -join ", "
+        Where-Object Name -ne 'Domain Users' | `
+        Where-Object Name -ne 'Domain Guests'
 
     If ($Groups) { 
-        Write-Host -ForegroundColor Gray "$($User.Name) is Disabled and in Security Groups."
+        $DisabledUsersInSecurityGroups += 1
+
+        Write-Host -ForegroundColor Yellow "$($User.Name) is Disabled and in Security Groups."
+
+        Foreach ( $Group in $Groups ) {
+            Try {
+                Write-Host -ForegroundColor Gray "Removing $User from $Group..."
+                Remove-ADGroupMember -Identity $Group -Members $User -Confirm:$False -WhatIf
+            }
+            Catch {
+                Write-Host -ForegroundColor Red "Unable to remove $User from $Group."
+            }
+        }
+
+        $Groups = $Groups.Name -join ", "
+
         [pscustomobject]@{
             Name              = $User.Name
             Username          = $User.SAMAccountName
@@ -83,6 +101,18 @@ $Data = Foreach ( $User in $Users ) {
         }
     }
 }
+
+# Display session metrics
+$MetricsTitle = @'
+
+ #####################
+ ## SESSION METRICS ##
+ #####################
+
+'@
+
+Write-Host -ForegroundColor Gray $MetricsTitle
+Write-Host -ForegroundColor Gray "There were $DisabledUsersInSecurityGroups Disabled Users in Security Groups."
 
 Write-Host -ForegroundColor Yellow "Creating $OutputFile..."
 $Data | Export-Csv -Path $OutputFile -NoTypeInformation

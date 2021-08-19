@@ -45,6 +45,7 @@ Exiting...
         "$null"
         {
             $LogPath = "C:\logs"
+
             # Format Log File as "yyyyMMdd-scriptName.ps1.log"
             $LogFile = "$LogPath\$(Get-Date -Format FileDate)-$($MyInvocation.MyCommand.Name).log"
         }
@@ -139,7 +140,7 @@ Exiting...
             # Stop Logging
             Stop-Transcript
     
-            Break
+            Exit
         }
     }
 }
