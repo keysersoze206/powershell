@@ -82,7 +82,7 @@ $Data = Foreach ( $User in $Users ) {
         Foreach ( $Group in $Groups ) {
             Try {
                 Write-Host -ForegroundColor Gray "Removing $User from $Group..."
-                Remove-ADGroupMember -Identity $Group -Members $User -Confirm:$False -WhatIf
+                Remove-ADGroupMember -Identity $Group -Members $User -Confirm:$False
             }
             Catch {
                 Write-Host -ForegroundColor Red "Unable to remove $User from $Group."
