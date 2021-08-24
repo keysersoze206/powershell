@@ -259,7 +259,7 @@ Process
                 FullName   = $FullName
                 DN         = $null
                 EmployeeID = $null
-                Accounts   = "No SSN in ADP"
+                Status     = "No SSN in ADP"
             }
             
             # Move on to the next $ActiveEmployee
@@ -278,7 +278,7 @@ Process
                 FullName   = $FullName
                 DN         = $null
                 EmployeeID = $Last4EmployeeSSN
-                Accounts   = "No Employee Number in ADP"
+                Status     = "No Employee Number in ADP"
             }
 
             # Move on to the next $ActiveEmployee
@@ -303,7 +303,7 @@ Process
                 FullName   = $FullName
                 DN         = $_.DistinguishedName
                 EmployeeID = $Last4EmployeeSSN
-                Accounts   = "Matched by Employee Number"
+                Status     = "Matched by Employee Number"
             }
         }
 
@@ -326,7 +326,7 @@ Process
                 FullName   = $FullName
                 DN         = $null
                 EmployeeID = $Last4EmployeeSSN
-                Accounts   = "No Accounts in AD matching Full Name"
+                Status     = "No Accounts in AD matching Full Name"
             }
 
             # Move on to the next $ActiveEmployee
@@ -380,7 +380,7 @@ Process
                         FullName   = $FullName
                         DN         = $_.DistinguishedName
                         EmployeeID = $Last4EmployeeSSN
-                        Accounts   = "Disabled User Match with EmployeeID"
+                        Status     = "Disabled User Match with EmployeeID"
                     }
                 }
                 
@@ -399,7 +399,7 @@ Process
                         FullName   = $FullName
                         DN         = $_.DistinguishedName
                         EmployeeID = $Last4EmployeeSSN
-                        Accounts   = "1 Enabled Account, No EmployeeID"
+                        Status     = "Enabled Account, No EmployeeID"
                     }
                 }
                 
@@ -418,7 +418,7 @@ Process
                         FullName   = $FullName
                         DN         = $_.DistinguishedName
                         EmployeeID = $Last4EmployeeSSN
-                        Accounts   = "1 Disabled Account, No EmployeeID"
+                        Status     = "Disabled Account, No EmployeeID"
                     }
                 }
 
@@ -434,7 +434,7 @@ Process
                         FullName   = $FullName
                         DN         = "None"
                         EmployeeID = $Last4EmployeeSSN
-                        Accounts   = "No Accounts in AD matching Full Name"
+                        Status     = "No Accounts in AD matching Full Name"
                     }
                 }
             }
