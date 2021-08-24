@@ -125,7 +125,7 @@ Exiting...
     # Check for $SearchBase Param. If $null, set it. Also test $SearchBase.
     Switch ($SearchBase)
     {
-        # Switch: If $SearchBase param was not envoked, use Param value
+        # Switch: If $SearchBase param was not envoked, use default option
         "$null"
         {
             # Try to set $SearchBase
