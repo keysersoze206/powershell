@@ -313,7 +313,7 @@ Process
             Continue
         }
 
-        # Get employee accounts that do not have an Employee Number, but matches Full Name
+        # Get employee accounts that match Full Name
         $NoEmployeeNumber = Get-ADUser -Filter {Name -eq $FullName} `
             -SearchBase $SearchBase `
             -SearchScope Subtree `
