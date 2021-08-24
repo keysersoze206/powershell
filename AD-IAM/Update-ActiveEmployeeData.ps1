@@ -303,7 +303,7 @@ Process
                 FullName   = $FullName
                 DN         = $_.DistinguishedName
                 EmployeeID = $Last4EmployeeSSN
-                Status     = "Matched by Employee Number"
+                Accounts   = "Matched by Employee Number"
             }
         }
 
@@ -380,7 +380,7 @@ Process
                         FullName   = $FullName
                         DN         = $_.DistinguishedName
                         EmployeeID = $Last4EmployeeSSN
-                        Status     = "Disabled User Match with EmployeeID"
+                        Accounts   = "Disabled User Match with EmployeeID"
                     }
                 }
                 
