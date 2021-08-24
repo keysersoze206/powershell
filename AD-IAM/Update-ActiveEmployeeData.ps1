@@ -344,7 +344,7 @@ Process
                 {
                     $User = $Employee | Where {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $true)}
     
-                    Write-Host -ForegroundColor Green "Found an Enabled account matching $FullName with $Last4EmployeeSSN."
+                    Write-Host -ForegroundColor Green "Found an Enabled account matching $FullName with EmployeeID $Last4EmployeeSSN."
 
                     # Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf | Out-Null
                     
@@ -367,7 +367,7 @@ Process
                     # Set $User
                     $User = $Employee | Where {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $false)}
     
-                    Write-Host -ForegroundColor Yellow "Found a Disabled account matching $FullName with $Last4EmployeeSSN."
+                    Write-Host -ForegroundColor Yellow "Found a Disabled account matching $FullName with EmployeeID $Last4EmployeeSSN."
 
                     # Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf | Out-Null
 
