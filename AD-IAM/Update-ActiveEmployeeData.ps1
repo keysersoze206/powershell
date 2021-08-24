@@ -460,7 +460,7 @@ End
     $SessionOutput = @"
 There are $(@($ActiveEmployees).Count) employees in ADP.
 Found $NoSSN employee(s) without an SSN in ADP.
-Found $NoEmployeeNumberUsers employee(s) with an Employee Number in ADP.
+Found $NoEmployeeNumberUsers employee(s) without an Employee Number in ADP.
 Found $ConfirmedAccounts confirmed Active Accounts based on the EmployeeNumber attribute.
 Found $VerifiableEnabledUsers employee(s) with an EmployeeID attribute and an Enabled account.
 Found $VerifiableDisabledUsers employee(s) with an EmployeeID attribute and a Disabled account.
