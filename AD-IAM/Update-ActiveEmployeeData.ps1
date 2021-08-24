@@ -181,7 +181,7 @@ Exiting...
             $OutputFile = "$OutputPath\$(Get-Date -Format FileDate)-$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).csv"
         }
 
-        # Switch: Separate Output Path from Output File
+        # Switch: If $OutputFile was envoked, separate Output Path from Output File
         Default
         {
             $OutputPath = Split-Path -Path $OutputFile
