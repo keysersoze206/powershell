@@ -66,7 +66,7 @@ Exiting...
     # Check for $EmployeeDataFile Param
     Switch ($EmployeeDataFile)
     {
-        # If $EmployeeDataFile was envoked, set it.
+        # Switch: If $EmployeeDataFile was envoked, set it.
         "$null" 
         {
             $DataFilePath     = [Environment]::GetFolderPath("Desktop")
@@ -74,7 +74,7 @@ Exiting...
             $EmployeeDataFile = "$DataFilePath\$EmployeeDataFile"
         }
 
-        #If $EmployeeDataFile was not envoked, use Param value
+        # Switch: If $EmployeeDataFile was not envoked, use Param value
         Default
         {
             Continue
@@ -84,7 +84,7 @@ Exiting...
     # Check for $LogFile Param.
     Switch ($LogFile)
     {
-        # If $LogFile param was not envoked, set it.
+        # Switch: If $LogFile param was not envoked, set it.
         "$null"
         {
             # Default directory
@@ -93,7 +93,7 @@ Exiting...
             $LogFile = "$LogPath\$(Get-Date -Format FileDate)-$($MyInvocation.MyCommand.Name).log"
         }
 
-        # If $LogFile param was envoked, set $LogPath
+        # Switch: If $LogFile param was envoked, set $LogPath
         Default
         {
             $LogPath = Split-Path -Path $LogFile
@@ -125,7 +125,7 @@ Exiting...
     # Check for $SearchBase Param. If $null, set it. Also test $SearchBase.
     Switch ($SearchBase)
     {
-        # If $SearchBase param was not envoked, use Param value
+        # Switch: If $SearchBase param was not envoked, use Param value
         "$null"
         {
             # Try to set $SearchBase
@@ -147,7 +147,7 @@ Exiting...
             }
         }
 
-        # If $SearchBase was envoked, set it.
+        # Switch: If $SearchBase was envoked, set it.
         Default
         {
             # Test input value for $SearchBase Param
@@ -173,7 +173,7 @@ Exiting...
     # Check for $OutputFile Param. If $null, set it.
     Switch ($OutputFile)
     {
-        # If $OutputFile is null, use default option
+        # Switch: If $OutputFile is null, use default option
         "$null"
         {
             $OutputPath = "C:\data"
@@ -181,7 +181,7 @@ Exiting...
             $OutputFile = "$OutputPath\$(Get-Date -Format FileDate)-$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).csv"
         }
 
-        # Separate Output Path from Output File
+        # Switch: Separate Output Path from Output File
         Default
         {
             $OutputPath = Split-Path -Path $OutputFile
@@ -232,7 +232,7 @@ Process
     # Define "Active" Employees (Status = Active or Leave)
     $ActiveEmployees = $AllEmployeeData | Where {($_."Status Type" -eq "Active" -or $_."Status Type" -eq "Leave")}
 
-    Write-Host -ForegroundColor Gray "Preparing to search for AD Users in $SearchBase..."
+    Write-Host -ForegroundColor Gray "Preparing to search for $(@($ActiveEmployees).Count) ADP Employees in $SearchBase..."
 
     # Loop through $ActiveEmployees, collect $Data, and update HR information
     $Data = Foreach ($ActiveEmployee in $ActiveEmployees) 
