@@ -307,17 +307,12 @@ Process
             }
         }
 
-        # If $EmployeeNumberUser returned a result
-        If ($EmployeeNumberUser)
-        {
-            Continue
-        }
-
-        # Get employee accounts that match Full Name
+        # Get employee accounts that match Full Name and Employee Number is not equal to $EmployeeNumber
         $NoEmployeeNumber = Get-ADUser -Filter {Name -eq $FullName} `
             -SearchBase $SearchBase `
             -SearchScope Subtree `
-            -Properties *
+            -Properties * | `
+            Where EmployeeNumber -ne $EmployeeNumber
         
         # If there are not any accounts that match Full Name, move on to the next $ActiveEmployee
         If (!$NoEmployeeNumber)
