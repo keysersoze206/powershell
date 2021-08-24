@@ -25,7 +25,7 @@ Param
     
     [Parameter(Mandatory=$false)]
     [ValidateNotNullOrEmpty()]
-    [ValidateSet("LastYear", "LastMonth", "LastWeek", "LastDay")] 
+    [ValidateSet("LastYear", "LastQuarter", "LastMonth", "LastWeek", "LastDay")] 
     [string]
     $DateRange = $null
 )
@@ -124,54 +124,43 @@ Process
     Switch ($DateRange)
     {
         'LastYear'
-        { 
-            Write-Host -ForegroundColor Gray "Termination Date Range is set to $DateRange."
-
+        {
             $TerminatedEmployees = $TerminatedEmployees | `
                 Where { $_."Status Eff Date" -le $Today `
-                -and $_."Status Eff Date" -ge $Today.AddYears(-1) }
-
-            Write-Host -ForegroundColor Gray "Processing $(@($TerminatedEmployees).Count) terminated employee records."
+                    -and $_."Status Eff Date" -ge $Today.AddYears(-1) }
+        }
+        'LastQuarter'
+        {
+            $TerminatedEmployees = $TerminatedEmployees | `
+                Where { $_."Status Eff Date" -le $Today `
+                    -and $_."Status Eff Date" -ge $Today.AddMonths(-3) }
         }
         'LastMonth'
         {
-            Write-Host -ForegroundColor Gray "Termination Date Range is set to $DateRange."
-
             $TerminatedEmployees = $TerminatedEmployees | `
                 Where { $_."Status Eff Date" -le $Today `
-                -and $_."Status Eff Date" -ge $Today.AddMonths(-1) }
-
-            Write-Host -ForegroundColor Gray "Processing $(@($TerminatedEmployees).Count) terminated employee records..."
+                    -and $_."Status Eff Date" -ge $Today.AddMonths(-1) }
         }
         'LastWeek'
         {
-            Write-Host -ForegroundColor Gray "Termination Date Range is set to $DateRange."
-            
             $TerminatedEmployees = $TerminatedEmployees | `
                 Where { $_."Status Eff Date" -le $Today `
-                -and $_."Status Eff Date" -ge $Today.AddDays(-7) }
-
-            Write-Host -ForegroundColor Gray "Processing $(@($TerminatedEmployees).Count) terminated employee records..."
+                    -and $_."Status Eff Date" -ge $Today.AddDays(-7) }
         }
         'LastDay'
         {
-            Write-Host -ForegroundColor Gray "Termination Date Range is set to $DateRange."
-
             $TerminatedEmployees = $TerminatedEmployees | `
                 Where { $_."Status Eff Date" -le $Today `
-                -and $_."Status Eff Date" -ge $Today.AddDays(-1) }
-
-            Write-Host -ForegroundColor Gray "Processing $(@($TerminatedEmployees).Count) terminated employee records..."
+                    -and $_."Status Eff Date" -ge $Today.AddDays(-1) }
         }
         Default
         {
-            Write-Host -ForegroundColor Gray "Termination Date Range is set to All Records (Default)."
-
             $TerminatedEmployees = $TerminatedEmployees
-
-            Write-Host -ForegroundColor Gray "Processing $(@($TerminatedEmployees).Count) terminated employee records..."
         }
     }
+
+    Write-Host -ForegroundColor Gray "Termination Date Range is set to $DateRange."
+    Write-Host -ForegroundColor Gray "Processing $(@($TerminatedEmployees).Count) terminated employee records..."
 
     # Loop through all termninated employees
     Foreach ( $Employee in $TerminatedEmployees)
@@ -218,13 +207,15 @@ End
 #####################
 
 '@
-
+    $SessionOutput = @"
+Processed $(@($TerminatedEmployees).Count) terminated employee records.
+$UserDisabled Users are already Disabled.
+$UserEnabled Users need to be Disabled.
+$UserDoesNotExist Users do not exist in AD.
+"@
     # Display session metrics
     Write-Host -ForegroundColor Gray $MetricsTitle
-    Write-Host -ForegroundColor Gray "Processed $(@($TerminatedEmployees).Count) terminated employee records."
-    Write-Host -ForegroundColor Green "$UserDisabled Users are already Disabled."
-    Write-Host -ForegroundColor Red "$UserEnabled Users need to be Disabled."
-    Write-Host -ForegroundColor Yellow "$UserDoesNotExist Users do not exist in AD."
+    Write-Host -ForegroundColor Gray $SessionOutput
 
     # Stop Logging
     Stop-Transcript
