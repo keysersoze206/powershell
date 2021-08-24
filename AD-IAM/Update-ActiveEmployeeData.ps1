@@ -66,7 +66,7 @@ Exiting...
     # Check for $EmployeeDataFile Param
     Switch ($EmployeeDataFile)
     {
-        # Switch: If $EmployeeDataFile was envoked, set it.
+        # Switch: If $EmployeeDataFile was not envoked, use default option
         "$null" 
         {
             $DataFilePath     = [Environment]::GetFolderPath("Desktop")
@@ -74,7 +74,7 @@ Exiting...
             $EmployeeDataFile = "$DataFilePath\$EmployeeDataFile"
         }
 
-        # Switch: If $EmployeeDataFile was not envoked, use Param value
+        # Switch: If $EmployeeDataFile was envoked, use input value
         Default
         {
             Continue
@@ -84,7 +84,7 @@ Exiting...
     # Check for $LogFile Param.
     Switch ($LogFile)
     {
-        # Switch: If $LogFile param was not envoked, set it.
+        # Switch: If $LogFile param was not envoked, use default option
         "$null"
         {
             # Default directory
@@ -93,7 +93,7 @@ Exiting...
             $LogFile = "$LogPath\$(Get-Date -Format FileDate)-$($MyInvocation.MyCommand.Name).log"
         }
 
-        # Switch: If $LogFile param was envoked, set $LogPath
+        # Switch: If $LogFile param was envoked, use input value and set $LogPath
         Default
         {
             $LogPath = Split-Path -Path $LogFile
@@ -122,7 +122,7 @@ Exiting...
     # Start Logging
     Start-Transcript -Path $LogFile
 
-    # Check for $SearchBase Param. If $null, set it. Also test $SearchBase.
+    # Check for $SearchBase Param.
     Switch ($SearchBase)
     {
         # Switch: If $SearchBase param was not envoked, use default option
@@ -143,11 +143,11 @@ Exiting...
                 # Stop Logging
                 Stop-Transcript
 
-                Exit
+                Exit 100
             }
         }
 
-        # Switch: If $SearchBase was envoked, set it.
+        # Switch: If $SearchBase was envoked, use input value
         Default
         {
             # Test input value for $SearchBase Param
@@ -165,12 +165,12 @@ Exiting...
                 # Stop Logging
                 Stop-Transcript
 
-                Exit
+                Exit 101
             }
         }
     }
 
-    # Check for $OutputFile Param. If $null, set it.
+    # Check for $OutputFile Param.
     Switch ($OutputFile)
     {
         # Switch: If $OutputFile was not envoked, use default option
@@ -181,7 +181,7 @@ Exiting...
             $OutputFile = "$OutputPath\$(Get-Date -Format FileDate)-$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).csv"
         }
 
-        # Switch: If $OutputFile was envoked, separate Output Path from Output File
+        # Switch: If $OutputFile was envoked, use input value and separate $OutputPath from $OutputFile
         Default
         {
             $OutputPath = Split-Path -Path $OutputFile
@@ -205,7 +205,7 @@ Exiting...
             # Stop Logging
             Stop-Transcript
     
-            Exit
+            Exit 102
         }
     }
 }
@@ -226,7 +226,7 @@ Process
         # Stop Logging
         Stop-Transcript
         
-        Exit
+        Exit 200
     }
 
     # Define "Active" Employees (Status = Active or Leave)
@@ -475,4 +475,6 @@ Unable to find any accounts for $UnverifiedEmployees employee(s) in AD.
 
     # Stop Logging
     Stop-Transcript
+
+    Exit 0
 }
