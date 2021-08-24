@@ -173,7 +173,7 @@ Exiting...
     # Check for $OutputFile Param. If $null, set it.
     Switch ($OutputFile)
     {
-        # Switch: If $OutputFile is null, use default option
+        # Switch: If $OutputFile was not envoked, use default option
         "$null"
         {
             $OutputPath = "C:\data"
