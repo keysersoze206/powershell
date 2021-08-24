@@ -317,7 +317,7 @@ Process
         # If there are not any accounts that match Full Name, move on to the next $ActiveEmployee
         If (!$NoEmployeeNumber)
         {
-            Write-Host -ForegroundColor Red "Unable to find a account for $FullName."
+            Write-Host -ForegroundColor Red "Unable to find an account for $FullName."
         
             # Add 1 to $UnverifiedEmployees counter
             $UnverifiedEmployees += 1
