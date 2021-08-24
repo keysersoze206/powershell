@@ -477,5 +477,6 @@ Unable to find any accounts for $UnverifiedEmployees employee(s) in AD.
     Write-Host -ForegroundColor Gray $MetricsTitle
     Write-Host -ForegroundColor Gray $SessionOutput
 
+    # Stop Logging
     Stop-Transcript
 }
