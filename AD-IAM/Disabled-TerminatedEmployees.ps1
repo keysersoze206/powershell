@@ -2,27 +2,32 @@
 .Synopsis
    Disable User in Active Directory based on Terminated Status Type in ADP
 .DESCRIPTION
-   Long description
+   Disable User in Active Directory based on Terminated Status Type in ADP
 .EXAMPLE
    Disable-TerminatedEmployees.ps1
 .EXAMPLE
-   Disable-TerminatedEmployees.ps1 -LogFile D:\folderName\output.log -EmployeeDataFile C:\folderName\file.csv -DateRange LastWeek
+   Disable-TerminatedEmployees.ps1 -LogFile D:\folderName\output.log `
+                                   -EmployeeDataFile C:\folderName\file.csv `
+                                   -DateRange LastWeek
 #>
 
 Param
 (   
+    # $LogFile Param
     [Parameter(Mandatory=$false)]
     [ValidateNotNullOrEmpty()]
     [ValidatePattern("^.*.log|^.*.txt")]
     [string]
     $LogFile = $null,
 
+    # $EmployeeDataFile Param
     [Parameter(Mandatory=$false)]
     [ValidateNotNullOrEmpty()]
     [ValidatePattern("^.*.csv")]
     [string]
     $EmployeeDataFile = $null,
     
+    # $DateRange Param
     [Parameter(Mandatory=$false)]
     [ValidateNotNullOrEmpty()]
     [ValidateSet("LastYear", "LastQuarter", "LastMonth", "LastWeek", "LastDay")] 
@@ -43,12 +48,15 @@ Begin
     # Check for $EmployeeDataFile Param
     Switch ($EmployeeDataFile)
     {
+        # Switch: If $EmployeeDataFile was not envoked, use default option
         "$null" 
         {
             $DataFilePath     = [Environment]::GetFolderPath("Desktop")
             $EmployeeDataFile = "EmployeeData.csv"
             $EmployeeDataFile = "$DataFilePath\$EmployeeDataFile"
         }
+
+        # Switch: If $EmployeeDataFile was envoked, use input value
         Default
         {
             Continue
@@ -56,44 +64,55 @@ Begin
     }
 
     # Check for $LogFile Param
-    Switch ($LogFile) {
+    Switch ($LogFile)
+    {
+        # Switch: If $LogFile param was not envoked, use default option
         "$null"
         {
+            # Default directory
             $LogPath = "C:\logs"
+            # Format Log File as "yyyyMMdd-scriptName.ps1.log"
             $LogFile = "$LogPath\$(Get-Date -Format FileDate)-$($MyInvocation.MyCommand.Name).log"
         }
+
+        # Switch: If $LogFile param was envoked, use input value and set $LogPath
         Default
         {
             $LogPath = Split-Path -Path $LogFile
         }
     }
 
-    # Create Log directory
-    If ($LogPath)
+    # Test if $LogPath directory already exist
+    If (!(Test-Path -Path $LogPath)) 
     {
-        If (!(Test-Path -Path $LogPath)) 
+        # Try to create $LogPath
+        Try 
         {
-            Try 
-            {
-                New-Item -ItemType Directory -Force -Path $LogPath -ErrorAction Stop | Out-Null
-            }
+            # Create $LogPath
+            New-Item -ItemType Directory -Force -Path $LogPath -ErrorAction Stop | Out-Null
+        }
 
-            Catch 
-            {
-                Throw "Unable to create directory $LogPath."
-            }
+        # Unable to create $LogPath directory
+        Catch 
+        {
+            # Error and exit
+            Throw "Unable to create directory $LogPath."
         }
     }
 
     # Start Logging
     Start-Transcript -Path $LogFile
-
+}
+Process
+{
+    # Try to import ADP data
     Try 
     {
         # Import ADP employee data
         $AllEmployees = Import-Csv $EmployeeDataFile
     }
 
+    # Cannot import $EmployeeDataFile
     Catch 
     {
         Write-Host -ForegroundColor Yellow "Unable to access $EmployeeDataFile."
@@ -102,11 +121,9 @@ Begin
         # Stop Logging
         Stop-Transcript
 
-        Break
+        Exit 200
     }
-}
-Process
-{
+
     Write-Host -ForegroundColor Yellow "Starting to run $($MyInvocation.MyCommand.Name)..."
 
     # Convert "Status Eff Date" from [string] to [datetime] format
@@ -123,36 +140,52 @@ Process
     # Set Termination Date Contraint
     Switch ($DateRange)
     {
+        # Switch: Date Range set to 'LastYear'
         'LastYear'
         {
+            # Calculate Last Year
             $TerminatedEmployees = $TerminatedEmployees | `
                 Where { $_."Status Eff Date" -le $Today `
                     -and $_."Status Eff Date" -ge $Today.AddYears(-1) }
         }
+
+        # Switch: Date Range set to 'LastQuarter'
         'LastQuarter'
         {
+            # Calculate Last Quarter (3 months)
             $TerminatedEmployees = $TerminatedEmployees | `
                 Where { $_."Status Eff Date" -le $Today `
                     -and $_."Status Eff Date" -ge $Today.AddMonths(-3) }
         }
+
+        # Switch: Date Range set to 'LastMonth'
         'LastMonth'
         {
+            # Calculate Last Month
             $TerminatedEmployees = $TerminatedEmployees | `
                 Where { $_."Status Eff Date" -le $Today `
                     -and $_."Status Eff Date" -ge $Today.AddMonths(-1) }
         }
+
+        # Switch: Date Range set to 'LastWeek'
         'LastWeek'
         {
+            # Calculate Last Week (7 days)
             $TerminatedEmployees = $TerminatedEmployees | `
                 Where { $_."Status Eff Date" -le $Today `
                     -and $_."Status Eff Date" -ge $Today.AddDays(-7) }
         }
+
+        # Switch: Date Range set to 'LastDay'
         'LastDay'
         {
+            # Calculate Last Day
             $TerminatedEmployees = $TerminatedEmployees | `
                 Where { $_."Status Eff Date" -le $Today `
                     -and $_."Status Eff Date" -ge $Today.AddDays(-1) }
         }
+
+        # Switch: Date Range set to Default (All Terminated Employees)
         Default
         {
             $TerminatedEmployees = $TerminatedEmployees
