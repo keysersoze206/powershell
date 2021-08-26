@@ -231,7 +231,7 @@ Process
     # Set LastLogonDate limit
     $Date = (get-date).adddays(-$Range)
     
-    Write-Host -ForegroundColor Gray "Generating a list of Users who have NOT logged on to $SearchBase since $Date..."
+    Write-Host -ForegroundColor Gray "Generating a list of Users in $SearchBase who have NOT logged on since $Date..."
     
     Try
     {
