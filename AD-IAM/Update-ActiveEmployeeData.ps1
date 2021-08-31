@@ -12,6 +12,7 @@
                                  -OutputFile D:\folderName\output.csv
 #>
 
+[CmdletBinding()]
 Param
 (
     # $LogFile Param
@@ -45,12 +46,47 @@ Param
 
 Begin
 {
+    Function Timestamp {
+        $(Get-Date).TimeOfDay
+    }
+
+    Function Write-InfoMsg {
+        Write-Output "INFO: [$(Timestamp)] $args"
+    }
+
+    Function Write-SuccessMsg {
+        # Save default Foreground Color
+        $c = [Console]::ForegroundColor
+
+        # Set ForegroundColor to Green
+        [Console]::ForegroundColor = "Green"
+
+        # Write message
+        Write-Output "SUCCESS: [$(Timestamp)] $args"
+
+        # Revert ForegroundColor to default
+        [Console]::ForegroundColor = $c
+    }
+
+    Function Write-ErrorMsg {
+        # Save default Foreground Color
+        $c = [Console]::ForegroundColor
+
+        # Set ForegroundColor to Green
+        [Console]::ForegroundColor = "Red"
+
+        # Write message
+        Write-Output "ERROR: [$(Timestamp)] $args"
+
+        # Revert ForegroundColor to default
+        [Console]::ForegroundColor = $c
+    }
+
     # Help Message
     $HelpMessage = @"
 Unable to contact the Domain Controller or the Search Base does not exist.
 Check your connectivity or install RSAT and re-run $($MyInvocation.MyCommand.Name).
 Reference: https://docs.microsoft.com/en-us/troubleshoot/windows-server/system-management-components/remote-server-administration-tools
-Exiting...
 "@
 
     # Reset Counters
@@ -67,7 +103,7 @@ Exiting...
     Switch ($EmployeeDataFile)
     {
         # Switch: If $EmployeeDataFile was not envoked, use default option
-        "$null" 
+        "$null"
         {
             $DataFilePath     = [Environment]::GetFolderPath("Desktop")
             $EmployeeDataFile = "EmployeeData.csv"
@@ -101,17 +137,17 @@ Exiting...
     }
 
     # Test if $LogPath directory already exist
-    If (!(Test-Path -Path $LogPath)) 
+    If (!(Test-Path -Path $LogPath))
     {
         # Try to create $LogPath
-        Try 
+        Try
         {
             # Create $LogPath
             New-Item -ItemType Directory -Force -Path $LogPath -ErrorAction Stop | Out-Null
         }
-    
+
         # Unable to create $LogPath directory
-        Catch 
+        Catch
         {
             # Error and exit
             Throw "Unable to create directory $LogPath."
@@ -129,7 +165,7 @@ Exiting...
         "$null"
         {
             # Try to set $SearchBase
-            Try 
+            Try
             {
                 # Get logged on User's domain
                 $SearchBase = Get-ADDomain -Current LoggedOnUser
@@ -138,7 +174,8 @@ Exiting...
             # Unable to set $SearchBase, exit.
             Catch
             {
-                Write-Host -ForegroundColor Red $HelpMessage
+                Write-InfoMsg $HelpMessage
+                Write-InfoMsg "Exiting..."
 
                 # Stop Logging
                 Stop-Transcript
@@ -160,7 +197,8 @@ Exiting...
             # $SearchBase test is not valid
             Catch
             {
-                Write-Host -ForegroundColor Red $HelpMessage
+                Write-InfoMsg $HelpMessage
+                Write-InfoMsg "Exiting..."
 
                 # Stop Logging
                 Stop-Transcript
@@ -189,22 +227,23 @@ Exiting...
     }
 
     # If $Output Path does not exist
-    If (!(Test-Path -Path $OutputPath)) 
+    If (!(Test-Path -Path $OutputPath))
     {
         # Try to create $OutputPath
-        Try 
+        Try
         {
             New-Item -ItemType Directory -Force -Path $OutputPath -ErrorAction Stop | Out-Null
         }
-    
+
         # If unable to create $OutputPath, exit.
-        Catch 
+        Catch
         {
-            Write-Host -ForegroundColor Red "Unable to create directory $OutputPath. Please check $LogFile. Exiting..."
-    
+            Write-InfoMsg "Unable to create directory $OutputPath. Please check $LogFile."
+            Write-InfoMsg "Exiting..."
+
             # Stop Logging
             Stop-Transcript
-    
+
             Exit 102
         }
     }
@@ -220,37 +259,40 @@ Process
     # Cannot import $EmployeeDataFile
     Catch
     {
-        Write-Host -ForegroundColor Red "Unable to access $EmployeeDataFile."
-        Write-Host -ForegroundColor Red "Exiting..."
+        Write-InfoMsg "Unable to access $EmployeeDataFile."
+        Write-InfoMsg "Exiting..."
 
         # Stop Logging
         Stop-Transcript
-        
+
         Exit 200
     }
 
     # Define "Active" Employees (Status = Active or Leave)
-    $ActiveEmployees = $AllEmployeeData | Where {($_."Status Type" -eq "Active" -or $_."Status Type" -eq "Leave")}
+    $ActiveEmployees = $AllEmployeeData | Where-Object {($_."Status Type" -eq "Active" -or $_."Status Type" -eq "Leave")}
 
-    Write-Host -ForegroundColor Gray "Preparing to search for $(@($ActiveEmployees).Count) ADP Employees in $SearchBase..."
+    Write-InfoMsg "Searching for $(@($ActiveEmployees).Count) ADP Employees in $SearchBase..."
 
     # Loop through $ActiveEmployees, collect $Data, and update HR information
-    $Data = Foreach ($ActiveEmployee in $ActiveEmployees) 
+    $Data = Foreach ($ActiveEmployee in $ActiveEmployees)
     {
         # Join First and Last Name
         $FullName = $ActiveEmployee."First Name" + " " + $ActiveEmployee."Last Name"
+
         # Set Employee's SSN
         $EmployeeFullSSN = $ActiveEmployee."Tax ID (SSN)"
+
         # Parse SSN
         $Split = $EmployeeFullSSN.split("-")
         $Last4EmployeeSSN = [string]$($Split[2..($Split.Length+1)])
+
         # Set Employee Number
         $EmployeeNumber = $($ActiveEmployee."File Number").TrimStart('0')
 
         # Employee does not have an SSN in ADP
-        If (!$Last4EmployeeSSN) 
+        If (!$Last4EmployeeSSN)
         {
-            Write-Host -ForegroundColor DarkRed -BackgroundColor White "No SSN in ADP for $FullName!"
+            Write-Verbose "[$(Timestamp)] No SSN in ADP for $FullName!"
 
             # Add 1 to $NoSSN counter
             $NoSSN += 1
@@ -261,7 +303,7 @@ Process
                 EmployeeID = $null
                 Status     = "No SSN in ADP"
             }
-            
+
             # Move on to the next $ActiveEmployee
             Continue
         }
@@ -269,8 +311,8 @@ Process
         # Employee does not have a File Number in ADP
         If (!$EmployeeNumber)
         {
-            Write-Host -ForegroundColor DarkRed -BackgroundColor White "$FullName does not have an EmployeeNumber in ADP!"
-            
+            Write-Verbose "[$(Timestamp)] $FullName does not have an EmployeeNumber in ADP!"
+
             # Add 1 to $NoEmployeeNumberUsers counter
             $NoEmployeeNumberUsers += 1
 
@@ -292,10 +334,10 @@ Process
             -Properties *
 
         # Update the HR information for a User with a matching Employee Number
-        $EmployeeNumberUser | % `
+        $EmployeeNumberUser | ForEach-Object `
         {
-            Write-Host "$($EmployeeNumberUser.DistinguishedName) is linked to Employee Number $EmployeeNumber."
-            
+            Write-Verbose "[$(Timestamp)] $($EmployeeNumberUser.DistinguishedName) is linked to Employee Number $EmployeeNumber."
+
             # Add 1 to $ConfirmedAccounts counter
             $ConfirmedAccounts += 1
 
@@ -312,13 +354,13 @@ Process
             -SearchBase $SearchBase `
             -SearchScope Subtree `
             -Properties * | `
-            Where EmployeeNumber -ne $EmployeeNumber
-        
+            Where-Object EmployeeNumber -ne $EmployeeNumber
+
         # If there are not any accounts that match Full Name, move on to the next $ActiveEmployee
         If (!$NoEmployeeNumber)
         {
-            Write-Host -ForegroundColor Red "Unable to find an account for $FullName."
-        
+            Write-Verbose "[$(Timestamp)] Unable to find an account for $FullName."
+
             # Add 1 to $UnverifiedEmployees counter
             $UnverifiedEmployees += 1
 
@@ -340,15 +382,16 @@ Process
             Switch ($Employee)
             {
                 # Switch: Employee has a matching SSN and is Enabled
-                $($Employee | Where {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $true)})
+                $($Employee | Where-Object {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $true)})
                 {
-                    $User = $Employee | Where {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $true)}
-    
-                    Write-Host -ForegroundColor Green "Found an Enabled account matching $FullName with EmployeeID $Last4EmployeeSSN."
+                    # Set $User
+                    # $User = $Employee | Where-Object {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $true)}
+
+                    Write-Verbose "[$(Timestamp)] Found an Enabled account matching $FullName with EmployeeID $Last4EmployeeSSN."
 
                     # Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf | Out-Null
-                    
-                    # Write-Host -ForegroundColor DarkGreen -BackgroundColor White "Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
+
+                    # Write-Verbose "[$(Timestamp)] Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
 
                     # Add 1 to VerifiableEnabledUser counter
                     $VerifiableEnabledUsers += 1
@@ -360,18 +403,18 @@ Process
                         Status     = "Enabled User Match with EmployeeID"
                     }
                 }
-                
+
                 # Switch: Employee has a matching SSN and is Disabled
-                $($Employee | Where {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $false)})
+                $($Employee | Where-Object {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $false)})
                 {
                     # Set $User
-                    $User = $Employee | Where {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $false)}
-    
-                    Write-Host -ForegroundColor Yellow "Found a Disabled account matching $FullName with EmployeeID $Last4EmployeeSSN."
+                    # $User = $Employee | Where-Object {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $false)}
+
+                    Write-Verbose "[$(Timestamp)] Found a Disabled account matching $FullName with EmployeeID $Last4EmployeeSSN."
 
                     # Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf | Out-Null
 
-                    # Write-Host -ForegroundColor DarkYellow -BackgroundColor White "Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
+                    # Write-Verbose "[$(Timestamp)] Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
 
                     # Add 1 to VerifiableDisabledUsers counter
                     $VerifiableDisabledUsers += 1
@@ -383,18 +426,18 @@ Process
                         Status     = "Disabled User Match with EmployeeID"
                     }
                 }
-                
+
                 # Switch: Employee does not have a matching SSN and is Enabled
-                $($Employee | Where {($_.EmployeeID -ne $Last4EmployeeSSN) -and ($_.Enabled -eq $true)})
+                $($Employee | Where-Object {($_.EmployeeID -ne $Last4EmployeeSSN) -and ($_.Enabled -eq $true)})
                 {
                     # Set $User
-                    $User = $Employee | Where Enabled -eq $true
-    
-                    Write-Host -ForegroundColor Cyan "Found an Enabled account for $FullName but the EmployeeID does not match."
-    
+                    # $User = $Employee | Where-Object Enabled -eq $true
+
+                    Write-Verbose "[$(Timestamp)] Found an Enabled account for $FullName but the EmployeeID does not match."
+
                     # Add 1 to $NoSSNEmployees counter
                     $NoSSNEmployees += 1
-    
+
                     [pscustomobject]@{
                         FullName   = $FullName
                         DN         = $_.DistinguishedName
@@ -402,18 +445,18 @@ Process
                         Status     = "Enabled Account, No EmployeeID"
                     }
                 }
-                
+
                 # Switch: Employee does not have a matching SSN and is Disabled
-                $($Employee | Where {($_.EmployeeID -ne $Last4EmployeeSSN) -and ($_.Enabled -eq $false)})
+                $($Employee | Where-Object {($_.EmployeeID -ne $Last4EmployeeSSN) -and ($_.Enabled -eq $false)})
                 {
                     # Set $User
-                    $User = $Employee | Where Enabled -eq $false
-    
-                    Write-Host -ForegroundColor Magenta "Found a Disabled account for $FullName but the EmployeeID does not match."
-                    
+                    # $User = $Employee | Where-Object Enabled -eq $false
+
+                    Write-Verbose "[$(Timestamp)] Found a Disabled account for $FullName but the EmployeeID does not match."
+
                     # Add 1 to NoSSNEmployeesDisabled counter
                     $NoSSNEmployeesDisabled += 1
-    
+
                     [pscustomobject]@{
                         FullName   = $FullName
                         DN         = $_.DistinguishedName
@@ -425,11 +468,11 @@ Process
                 # Switch: Everything else
                 Default
                 {
-                    Write-Host -ForegroundColor Red "Unable to find a account for $FullName. (Default)"
-            
+                    Write-Verbose "[$(Timestamp)] Unable to find a account for $FullName. (Default)"
+
                     # Add 1 to $UnverifiedEmployees counter
                     $UnverifiedEmployees += 1
-    
+
                     [pscustomobject]@{
                         FullName   = $FullName
                         DN         = "None"
@@ -443,8 +486,8 @@ Process
 }
 End
 {
-    Write-Host -ForegroundColor Yellow "Creating $OutputFile..."
-    
+    Write-InfoMsg "Creating $OutputFile..."
+
     # Write [pscustomobject] in $Data to .csv
     $Data | Export-Csv -Path $OutputFile -NoTypeInformation
 
@@ -470,8 +513,8 @@ Unable to find any accounts for $UnverifiedEmployees employee(s) in AD.
 "@
 
     # Display session metrics
-    Write-Host -ForegroundColor Gray $MetricsTitle
-    Write-Host -ForegroundColor Gray $SessionOutput
+    Write-Output $MetricsTitle
+    Write-Output $SessionOutput
 
     # Stop Logging
     Stop-Transcript
