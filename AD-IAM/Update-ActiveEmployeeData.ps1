@@ -51,43 +51,18 @@ Begin
     }
 
     Function Write-InfoMsg {
-        Write-Output "INFO: [$(Timestamp)] $args"
+        Write-Host "INFO: [$(Timestamp)] $args"
     }
 
     Function Write-SuccessMsg {
-        # Save default Foreground Color
-        $c = [Console]::ForegroundColor
-
-        # Set ForegroundColor to Green
-        [Console]::ForegroundColor = "Green"
-
         # Write message
-        Write-Output "SUCCESS: [$(Timestamp)] $args"
-
-        # Revert ForegroundColor to default
-        [Console]::ForegroundColor = $c
+        Write-Host -ForegroundColor Green "SUCCESS: [$(Timestamp)] $args"
     }
 
     Function Write-ErrorMsg {
-        # Save default Foreground Color
-        $c = [Console]::ForegroundColor
-
-        # Set ForegroundColor to Green
-        [Console]::ForegroundColor = "Red"
-
         # Write message
-        Write-Output "ERROR: [$(Timestamp)] $args"
-
-        # Revert ForegroundColor to default
-        [Console]::ForegroundColor = $c
+        Write-Host -ForegroundColor Red "ERROR: [$(Timestamp)] $args"
     }
-
-    # Help Message
-    $HelpMessage = @"
-Unable to contact the Domain Controller or the Search Base does not exist.
-Check your connectivity or install RSAT and re-run $($MyInvocation.MyCommand.Name).
-Reference: https://docs.microsoft.com/en-us/troubleshoot/windows-server/system-management-components/remote-server-administration-tools
-"@
 
     # Reset Counters
     $NoSSN                   = 0
@@ -98,6 +73,13 @@ Reference: https://docs.microsoft.com/en-us/troubleshoot/windows-server/system-m
     $NoSSNEmployees          = 0
     $NoSSNEmployeesDisabled  = 0
     $UnverifiedEmployees     = 0
+
+    # Help Message (formatted)
+    $HelpMessage = @"
+Unable to contact the Domain Controller or the Search Base does not exist.
+Check your connectivity or install RSAT and re-run $($MyInvocation.MyCommand.Name).
+Reference: https://docs.microsoft.com/en-us/troubleshoot/windows-server/system-management-components/remote-server-administration-tools
+"@
 
     # Check for $EmployeeDataFile Param
     Switch ($EmployeeDataFile)
@@ -216,7 +198,8 @@ Reference: https://docs.microsoft.com/en-us/troubleshoot/windows-server/system-m
         {
             $OutputPath = "C:\data"
             # Format Output File as "yyyyMMdd-scriptName.csv"
-            $OutputFile = "$OutputPath\$(Get-Date -Format FileDate)-$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)).csv"
+            $ScriptName = "$([System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name))"
+            $OutputFile = "$OutputPath\$(Get-Date -Format FileDate)-$ScriptName.csv"
         }
 
         # Switch: If $OutputFile was envoked, use input value and separate $OutputPath from $OutputFile
@@ -336,16 +319,57 @@ Process
         # Update the HR information for a User with a matching Employee Number
         $EmployeeNumberUser | ForEach-Object `
         {
-            Write-Verbose "[$(Timestamp)] $($EmployeeNumberUser.DistinguishedName) is linked to Employee Number $EmployeeNumber."
+            Write-Verbose "[$(Timestamp)] $($_.DistinguishedName) is linked to Employee Number $EmployeeNumber."
 
             # Add 1 to $ConfirmedAccounts counter
             $ConfirmedAccounts += 1
 
             [pscustomobject]@{
-                FullName   = $FullName
+                FullName   = $_.Name
                 DN         = $_.DistinguishedName
                 EmployeeID = $Last4EmployeeSSN
                 Status     = "Matched by Employee Number"
+            }
+
+            $Params = @{ }
+
+            #Determine which User attributes need to be updated; add to Params Hashtable
+            If ( $_.EmployeeNumber -ne $EmployeeNumber )
+            {
+                $Params.EmployeeNumber += $EmployeeNumber
+            }
+            If ( $_.Description -ne $ActiveEmployee."Job Title" )
+            {
+                $Params.Description += $ActiveEmployee."Job Title"
+            }
+            If ( $_.Title -ne $ActiveEmployee."Job Title" )
+            {
+                $Params.Title += $ActiveEmployee."Job Title"
+            }
+            If ( $_.Department -ne $ActiveEmployee."Home Department Name" )
+            {
+                $Params.Department += $ActiveEmployee."Home Department Name"
+            }
+
+            # If User attributes need to be updated
+            If ($Params.Count -gt 0)
+            {
+                $Changes = $(($Params.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ', ')
+                Try
+                {
+                    Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf
+
+                    Write-SuccessMsg "$Changes was modified for $($_.DistinguishedName)."
+                }
+                Catch
+                {
+                    Write-ErrorMsg "Unable to modify $($_.DistinguishedName)."
+                }
+            }
+            # User attributes are up to date
+            Else
+            {
+                Write-Verbose "[$(Timestamp)] $($_.DistinguishedName) is up to date."
             }
         }
 
@@ -384,14 +408,23 @@ Process
                 # Switch: Employee has a matching SSN and is Enabled
                 $($Employee | Where-Object {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $true)})
                 {
-                    # Set $User
-                    # $User = $Employee | Where-Object {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $true)}
-
                     Write-Verbose "[$(Timestamp)] Found an Enabled account matching $FullName with EmployeeID $Last4EmployeeSSN."
 
-                    # Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf | Out-Null
-
-                    # Write-Verbose "[$(Timestamp)] Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
+                    # Set Employee Number
+                    $Employee | Where-Object {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $true)} | `
+                        ForEach-Object `
+                        {
+                            Try
+                            {
+                                Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf
+                                
+                                Write-SuccessMsg "Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
+                            }
+                            Catch
+                            {
+                                Write-Error "Unable to set Employee Number for $($_.DistinguishedName)."
+                            }
+                        }
 
                     # Add 1 to VerifiableEnabledUser counter
                     $VerifiableEnabledUsers += 1
@@ -407,14 +440,24 @@ Process
                 # Switch: Employee has a matching SSN and is Disabled
                 $($Employee | Where-Object {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $false)})
                 {
-                    # Set $User
-                    # $User = $Employee | Where-Object {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $false)}
 
                     Write-Verbose "[$(Timestamp)] Found a Disabled account matching $FullName with EmployeeID $Last4EmployeeSSN."
 
-                    # Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf | Out-Null
-
-                    # Write-Verbose "[$(Timestamp)] Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
+                    # Set Employee Number
+                    $Employee | Where-Object {($_.EmployeeID -eq $Last4EmployeeSSN) -and ($_.Enabled -eq $false)} | `
+                        ForEach-Object `
+                        {
+                            Try
+                            {
+                                Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf
+                                
+                                Write-SuccessMsg "Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
+                            }
+                            Catch
+                            {
+                                Write-Error "Unable to set Employee Number for $($_.DistinguishedName)."
+                            }
+                        }
 
                     # Add 1 to VerifiableDisabledUsers counter
                     $VerifiableDisabledUsers += 1
@@ -431,7 +474,7 @@ Process
                 $($Employee | Where-Object {($_.EmployeeID -ne $Last4EmployeeSSN) -and ($_.Enabled -eq $true)})
                 {
                     # Set $User
-                    # $User = $Employee | Where-Object Enabled -eq $true
+                    # $User = $Employee | Where-Object {($_.EmployeeID -ne $Last4EmployeeSSN) -and ($_.Enabled -eq $true)}
 
                     Write-Verbose "[$(Timestamp)] Found an Enabled account for $FullName but the EmployeeID does not match."
 
@@ -450,7 +493,7 @@ Process
                 $($Employee | Where-Object {($_.EmployeeID -ne $Last4EmployeeSSN) -and ($_.Enabled -eq $false)})
                 {
                     # Set $User
-                    # $User = $Employee | Where-Object Enabled -eq $false
+                    # $User = $Employee | Where-Object {($_.EmployeeID -ne $Last4EmployeeSSN) -and ($_.Enabled -eq $false)}
 
                     Write-Verbose "[$(Timestamp)] Found a Disabled account for $FullName but the EmployeeID does not match."
 
@@ -494,9 +537,9 @@ End
     # Formatted Text
     $MetricsTitle = @'
 
-#####################
-## SESSION METRICS ##
-#####################
+:::::::::::::::::::::
+:: SESSION METRICS ::
+:::::::::::::::::::::
 
 '@
     # Formatted Text
@@ -504,12 +547,13 @@ End
 There are $(@($ActiveEmployees).Count) employees in ADP.
 Found $NoSSN employee(s) without an SSN in ADP.
 Found $NoEmployeeNumberUsers employee(s) without an Employee Number in ADP.
-Found $ConfirmedAccounts confirmed Active Accounts based on the EmployeeNumber attribute.
+Found $ConfirmedAccounts confirmed Active Directory Accounts based on the EmployeeNumber attribute.
 Found $VerifiableEnabledUsers employee(s) with an EmployeeID attribute and an Enabled account.
 Found $VerifiableDisabledUsers employee(s) with an EmployeeID attribute and a Disabled account.
 Found $NoSSNEmployees employee(s) without an EmployeeID attribute and an Enabled account.
 Found $NoSSNEmployeesDisabled employee(s) without an EmployeeID attribute and a Disabled account.
 Unable to find any accounts for $UnverifiedEmployees employee(s) in AD.
+
 "@
 
     # Display session metrics
@@ -517,6 +561,13 @@ Unable to find any accounts for $UnverifiedEmployees employee(s) in AD.
     Write-Output $SessionOutput
 
     # Stop Logging
+
+    # Check if -Verbose flag was NOT used
+    If (!($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent))
+    {
+        Write-InfoMsg "You can re-run $($MyInvocation.MyCommand.Name) with -Verbose flag to see full details."
+    }
+
     Stop-Transcript
 
     Exit 0
