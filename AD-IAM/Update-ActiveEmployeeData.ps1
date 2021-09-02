@@ -357,7 +357,7 @@ Process
                 $Changes = $(($Params.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ', ')
                 Try
                 {
-                    Set-ADUser $_ -EmployeeNumber $EmployeeNumber
+                    Set-ADUser $_ @Params
 
                     Write-SuccessMsg "$Changes was modified for $($_.DistinguishedName)."
                 }
@@ -379,25 +379,6 @@ Process
             -SearchScope Subtree `
             -Properties * | `
             Where-Object EmployeeNumber -ne $EmployeeNumber
-
-        # If there are not any accounts that match Full Name, move on to the next $ActiveEmployee
-        If (!$NoEmployeeNumber)
-        {
-            Write-Verbose "[$(Timestamp)] Unable to find an account for $FullName."
-
-            # Add 1 to $UnverifiedEmployees counter
-            $UnverifiedEmployees += 1
-
-            [pscustomobject]@{
-                FullName   = $FullName
-                DN         = $null
-                EmployeeID = $Last4EmployeeSSN
-                Status     = "No Accounts in AD matching Full Name"
-            }
-
-            # Move on to the next $ActiveEmployee
-            Continue
-        }
 
         # Loop through accounts that do not have an Employee Number, but matches Full Name
         Foreach ($Employee in $NoEmployeeNumber)
@@ -507,23 +488,32 @@ Process
                         Status     = "Disabled Account, No EmployeeID"
                     }
                 }
-
-                # Switch: Everything else
-                Default
-                {
-                    Write-Verbose "[$(Timestamp)] Unable to find a account for $FullName. (Default)"
-
-                    # Add 1 to $UnverifiedEmployees counter
-                    $UnverifiedEmployees += 1
-
-                    [pscustomobject]@{
-                        FullName   = $FullName
-                        DN         = "None"
-                        EmployeeID = $Last4EmployeeSSN
-                        Status     = "No Accounts in AD matching Full Name"
-                    }
-                }
             }
+        }
+
+        # Get employee accounts that match Full Name
+        $NoEmployeeNumberNoFullName = Get-ADUser -Filter {Name -eq $FullName} `
+            -SearchBase $SearchBase `
+            -SearchScope Subtree `
+            -Properties *
+
+        # If there are not any accounts that match Full Name, move on to the next $ActiveEmployee
+        If (!$NoEmployeeNumberNoFullName)
+        {
+            Write-Verbose "[$(Timestamp)] Unable to find an account for $FullName."
+
+            # Add 1 to $UnverifiedEmployees counter
+            $UnverifiedEmployees += 1
+
+            [pscustomobject]@{
+                FullName   = $FullName
+                DN         = $null
+                EmployeeID = $Last4EmployeeSSN
+                Status     = "No Accounts in AD matching Full Name"
+            }
+
+            # Move on to the next $ActiveEmployee
+            Continue
         }
     }
 }
