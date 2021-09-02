@@ -275,7 +275,7 @@ Process
         # Employee does not have an SSN in ADP
         If (!$Last4EmployeeSSN)
         {
-            Write-Verbose "[$(Timestamp)] No SSN in ADP for $FullName!"
+            Write-ErrorMsg "No SSN in ADP for $FullName!"
 
             # Add 1 to $NoSSN counter
             $NoSSN += 1
@@ -294,7 +294,7 @@ Process
         # Employee does not have a File Number in ADP
         If (!$EmployeeNumber)
         {
-            Write-Verbose "[$(Timestamp)] $FullName does not have an EmployeeNumber in ADP!"
+            Write-ErrorMsg "$FullName does not have an EmployeeNumber in ADP!"
 
             # Add 1 to $NoEmployeeNumberUsers counter
             $NoEmployeeNumberUsers += 1
@@ -334,9 +334,9 @@ Process
             $Params = @{ }
 
             #Determine which User attributes need to be updated; add to Params Hashtable
-            If ( $_.EmployeeNumber -ne $EmployeeNumber )
+            If ( $_.EmployeeID -ne $Last4EmployeeSSN )
             {
-                $Params.EmployeeNumber += $EmployeeNumber
+                $Params.EmployeeID += $Last4EmployeeSSN
             }
             If ( $_.Description -ne $ActiveEmployee."Job Title" )
             {
@@ -357,7 +357,7 @@ Process
                 $Changes = $(($Params.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ', ')
                 Try
                 {
-                    Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf
+                    Set-ADUser $_ -EmployeeNumber $EmployeeNumber
 
                     Write-SuccessMsg "$Changes was modified for $($_.DistinguishedName)."
                 }
@@ -416,13 +416,13 @@ Process
                         {
                             Try
                             {
-                                Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf
+                                Set-ADUser $_ -EmployeeNumber $EmployeeNumber
                                 
                                 Write-SuccessMsg "Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
                             }
                             Catch
                             {
-                                Write-Error "Unable to set Employee Number for $($_.DistinguishedName)."
+                                Write-ErrorMsg "Unable to set Employee Number for $($_.DistinguishedName)."
                             }
                         }
 
@@ -449,13 +449,13 @@ Process
                         {
                             Try
                             {
-                                Set-ADUser $_ -EmployeeNumber $EmployeeNumber -WhatIf
+                                Set-ADUser $_ -EmployeeNumber $EmployeeNumber
                                 
                                 Write-SuccessMsg "Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
                             }
                             Catch
                             {
-                                Write-Error "Unable to set Employee Number for $($_.DistinguishedName)."
+                                Write-ErrorMsg "Unable to set Employee Number for $($_.DistinguishedName)."
                             }
                         }
 
@@ -560,14 +560,13 @@ Unable to find any accounts for $UnverifiedEmployees employee(s) in AD.
     Write-Output $MetricsTitle
     Write-Output $SessionOutput
 
-    # Stop Logging
-
     # Check if -Verbose flag was NOT used
     If (!($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent))
     {
         Write-InfoMsg "You can re-run $($MyInvocation.MyCommand.Name) with -Verbose flag to see full details."
     }
 
+    # Stop Logging
     Stop-Transcript
 
     Exit 0
