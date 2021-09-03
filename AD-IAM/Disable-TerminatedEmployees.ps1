@@ -37,6 +37,24 @@ Param
 
 Begin
 {
+    Function Timestamp {
+        $(Get-Date).TimeOfDay
+    }
+
+    Function Write-InfoMsg {
+        Write-Host "INFO: [$(Timestamp)] $args"
+    }
+
+    Function Write-SuccessMsg {
+        # Write message
+        Write-Host -ForegroundColor Green "SUCCESS: [$(Timestamp)] $args"
+    }
+
+    Function Write-ErrorMsg {
+        # Write message
+        Write-Host -ForegroundColor Red "ERROR: [$(Timestamp)] $args"
+    }
+
     #Variables
     $Today = $(Get-Date)
 
@@ -115,8 +133,8 @@ Process
     # Cannot import $EmployeeDataFile
     Catch 
     {
-        Write-Host -ForegroundColor Yellow "Unable to access $EmployeeDataFile."
-        Write-Host -ForegroundColor Yellow "Exiting..."
+        Write-ErrorMsg "Unable to access $EmployeeDataFile."
+        Write-ErrorMsg "Exiting..."
 
         # Stop Logging
         Stop-Transcript
@@ -124,7 +142,7 @@ Process
         Exit 200
     }
 
-    Write-Host -ForegroundColor Yellow "Starting to run $($MyInvocation.MyCommand.Name)..."
+    Write-InfoMsg "Starting to run $($MyInvocation.MyCommand.Name)..."
 
     # Convert "Status Eff Date" from [string] to [datetime] format
     Foreach ($Employee in $AllEmployees) 
@@ -192,8 +210,8 @@ Process
         }
     }
 
-    Write-Host -ForegroundColor Gray "Termination Date Range is set to $DateRange."
-    Write-Host -ForegroundColor Gray "Processing $(@($TerminatedEmployees).Count) terminated employee records..."
+    Write-InfoMsg "Termination Date Range is set to $DateRange."
+    Write-InfoMsg "Processing $(@($TerminatedEmployees).Count) terminated employee records..."
 
     # Loop through all termninated employees
     Foreach ( $Employee in $TerminatedEmployees)
@@ -201,15 +219,27 @@ Process
         # Join Name fields from ADP data
         $Name = $Employee."First Name" + " " + $Employee."Last Name"
 
-        # Determine if User exists in AD
-        $User = Get-ADUser -Filter { Name -eq $Name }
+        Try
+        {
+            # Determine if User exists in AD
+            $User = Get-ADUser -Filter { Name -eq $Name }
+        }
+        Catch
+        {
+            Write-ErrorMsg "Unabled to access Active Directory."
+
+            # Stop Logging
+            Stop-Transcript
+
+            Exit 201
+        }
 
         # User exists and is Enabled
         If($EnabledAccounts = $User | Where Enabled -eq $true) 
         {
             Foreach ($Account in $EnabledAccounts ) 
             {
-                Write-Host -ForegroundColor Red "$($Account.distinguishedName) needs to be Disabled."
+                Write-InfoMsg "$($Account.distinguishedName) needs to be Disabled."
                 $UserEnabled += 1
             }
         }
@@ -219,13 +249,13 @@ Process
         {
             Foreach ($Account in $DisabledAccounts ) 
             {
-                Write-Host -ForegroundColor Green "$($Account.distinguishedName) is already Disabled."
+                Write-Verbose "[$(Timestamp)] $($Account.distinguishedName) is already Disabled."
                 $UserDisabled += 1
             }
         }
 
         Else {
-            Write-Host -ForegroundColor Yellow "$Name does not exist in AD."
+            Write-ErrorMsg "$Name does not exist in AD."
             $UserDoesNotExist += 1
         }
     }
@@ -235,9 +265,9 @@ End
     #Formatted Text
     $MetricsTitle = @'
 
-#####################
-## SESSION METRICS ##
-#####################
+:::::::::::::::::::::
+:: SESSION METRICS ::
+:::::::::::::::::::::
 
 '@
     $SessionOutput = @"
@@ -245,10 +275,18 @@ Processed $(@($TerminatedEmployees).Count) terminated employee records.
 $UserDisabled Users are already Disabled.
 $UserEnabled Users need to be Disabled.
 $UserDoesNotExist Users do not exist in AD.
+
 "@
+
     # Display session metrics
-    Write-Host -ForegroundColor Gray $MetricsTitle
-    Write-Host -ForegroundColor Gray $SessionOutput
+    Write-Output $MetricsTitle
+    Write-Output $SessionOutput
+
+    # Check if -Verbose flag was NOT used
+    If (!($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent))
+    {
+        Write-InfoMsg "You can re-run $($MyInvocation.MyCommand.Name) with -Verbose flag to see full details."
+    }
 
     # Stop Logging
     Stop-Transcript
