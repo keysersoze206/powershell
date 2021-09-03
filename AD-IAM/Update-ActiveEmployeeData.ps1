@@ -65,14 +65,21 @@ Begin
     }
 
     # Reset Counters
-    $NoSSN                   = 0
-    $NoEmployeeNumberUsers   = 0
-    $ConfirmedAccounts       = 0
-    $VerifiableEnabledUsers  = 0
-    $VerifiableDisabledUsers = 0
-    $NoSSNEmployees          = 0
-    $NoSSNEmployeesDisabled  = 0
-    $UnverifiedEmployees     = 0
+    $NoSSN                       = 0
+    $NoEmployeeNumberUsers       = 0
+    $ConfirmedAccounts           = 0
+    $ConfirmedChanged            = 0
+    $ConfirmedUnChanged          = 0
+    $ConfirmedFailed             = 0
+    $VerifiableEnabledUsers      = 0
+    $VerifiableEnabledChanged    = 0
+    $VerifiableEnabledUnChanged  = 0
+    $VerifiableDisabledUsers     = 0
+    $VerifiableDisabledChanged   = 0
+    $VerifiableDisabledUnChanged = 0
+    $NoSSNEmployees              = 0
+    $NoSSNEmployeesDisabled      = 0
+    $UnverifiedEmployees         = 0
 
     # Help Message (formatted)
     $HelpMessage = @"
@@ -360,16 +367,22 @@ Process
                     Set-ADUser $_ @Params
 
                     Write-SuccessMsg "$Changes was modified for $($_.DistinguishedName)."
+
+                    $ConfirmedChanged += 1
                 }
                 Catch
                 {
                     Write-ErrorMsg "Unable to modify $($_.DistinguishedName)."
+
+                    $ConfirmedFailed += 1
                 }
             }
             # User attributes are up to date
             Else
             {
                 Write-Verbose "[$(Timestamp)] $($_.DistinguishedName) is up to date."
+
+                $ConfirmedUnChanged += 1
             }
         }
 
@@ -400,10 +413,14 @@ Process
                                 Set-ADUser $_ -EmployeeNumber $EmployeeNumber
                                 
                                 Write-SuccessMsg "Set Employee Number for $($_.DistinguishedName) to $EmployeeNumber."
+
+                                $VerifiableEnabledChanged += 1
                             }
                             Catch
                             {
                                 Write-ErrorMsg "Unable to set Employee Number for $($_.DistinguishedName)."
+
+                                $VerifiableEnabledUnChanged += 1
                             }
                         }
 
@@ -534,12 +551,19 @@ End
 '@
     # Formatted Text
     $SessionOutput = @"
-There are $(@($ActiveEmployees).Count) employees in ADP.
+There are $(@($ActiveEmployees).Count) Active employees in ADP.
 Found $NoSSN employee(s) without an SSN in ADP.
 Found $NoEmployeeNumberUsers employee(s) without an Employee Number in ADP.
 Found $ConfirmedAccounts confirmed Active Directory Accounts based on the EmployeeNumber attribute.
+      $ConfirmedUnChanged Confirmed accounts are up to date.
+      $ConfirmedChanged Confirmed accounts have been updated.
+      $ConfirmedFailed Confirmed accounts failed to be updated.
 Found $VerifiableEnabledUsers employee(s) with an EmployeeID attribute and an Enabled account.
+      $VerifiableEnabledChanged Enabled account(s) had EmployeeID added.
+      $VerifiableEnabledUnChanged Enabled account(s) failed to add EmployeeID.
 Found $VerifiableDisabledUsers employee(s) with an EmployeeID attribute and a Disabled account.
+      $VerifiableDisabledChanged Disabled account(s) had EmployeeID added.
+      $VerifiableDisabledUnChanged Disabled account(s) failed to add EmployeeID.
 Found $NoSSNEmployees employee(s) without an EmployeeID attribute and an Enabled account.
 Found $NoSSNEmployeesDisabled employee(s) without an EmployeeID attribute and a Disabled account.
 Unable to find any accounts for $UnverifiedEmployees employee(s) in AD.
